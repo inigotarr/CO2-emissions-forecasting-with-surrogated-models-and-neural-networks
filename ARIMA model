@@ -1,0 +1,158 @@
+# ARIMA STARTS LOOKING FOR THE BEST VALUES OF P & Q
+
+# In[ ]:
+
+DATAFORARIMA=SPAIN_scaled
+
+# DATAFORARIMA=FRANCE_scaled
+# DATAFORARIMA=ITALY_scaled
+# DATAFORARIMA=GERMANY_scaled
+
+train_size = int(len(DATAFORARIMA) * 0.8)
+train, test = DATAFORARIMA.iloc[:train_size], DATAFORARIMA.iloc[train_size:]
+
+# print(train)
+
+
+# Create empty list to store search results
+order_aic_bic=[]
+
+# Loop over p values from 0-6
+for p in range(3):
+  # Loop over q values from 0-6
+    for q in range(3):
+        # create and fit ARMA(p,q) model
+        model =  SARIMAX(train['CO2 eq'], order=(p, 1, q),trend='c')
+        results = model.fit()
+        
+        # Append order and results tuple
+        order_aic_bic.append((p,q,results.aic, results.bic))
+
+# Construct DataFrame from order_aic_bic
+order_df = pd.DataFrame(order_aic_bic, 
+                        columns=['p','q','AIC','BIC'])
+
+print(order_df.sort_values('AIC'))
+
+print('____________________________________________________')
+print(order_df.sort_values('BIC')
+)
+
+# In[ ]:
+
+order=(1, 1, 0)
+modelARIMA = SARIMAX(train['CO2 eq'], order=order)
+fitted_model = modelARIMA.fit()
+fitted_model.plot_diagnostics()
+
+# Print the model summary
+print(fitted_model.summary())
+
+# Initialize rolling forecast setup
+history = list(train['CO2 eq'])  # Start with training data
+test_predictions = []  # Store rolling predictions
+
+# Fit the model on training data **once**
+model = SARIMAX(history, order=order)
+model_fit = model.fit(disp=False)  # Suppress optimization messages
+
+for t in range(len(test)):
+    # Forecast next step using previously estimated parameters
+    yhat_f = model_fit.forecast()[0]  
+    test_predictions.append(yhat_f)
+    
+    # Append the new true value without refitting
+    new_obs = test['CO2 eq'].iloc[t]
+    history.append(new_obs)
+
+    # Use `extend()` to update state space without re-estimating parameters
+    model_fit = model_fit.extend([new_obs], refit=False)
+
+# Create DataFrame with updated test predictions
+test_forecast_df = pd.DataFrame({'Year': test['YEAR'], 'Forecast': test_predictions})
+
+#/////////////////////////////////////////////////////////////////////////////////////////////
+#/////////////////////////////////////////////////////////////////////////////////////////////
+#/////////////////////////////////////////////////////////////////////////////////////////////
+MAX=MAXs/1e4
+MIN=MINs/1e4
+#/////////////////////////////////////////////////////////////////////////////////////////////
+#/////////////////////////////////////////////////////////////////////////////////////////////
+#/////////////////////////////////////////////////////////////////////////////////////////////
+
+train['CO2 eq'] = train['CO2 eq'] * (MAX - MIN) + MIN
+test['CO2 eq'] = test['CO2 eq'] * (MAX - MIN) + MIN
+test_forecast_df['Forecast'] = test_forecast_df['Forecast'] * (MAX - MIN) + MIN
+
+
+
+
+
+# Plot the original train & test data along with the model's fitted values
+plt.figure(figsize=(10, 5))
+
+# Plot original training data
+plt.plot(train['YEAR'].iloc[1:], train['CO2 eq'].iloc[1:], label='Training Data (Original Data)', marker='o', linestyle='solid')
+
+
+fitted_values = fitted_model.fittedvalues
+fitted_series = pd.Series(fitted_values, index=pd.Index(range(len(fitted_values))))
+fitted_series = fitted_series * (MAX - MIN) + MIN
+# print(fitted_series)
+
+plt.plot(train['YEAR'].iloc[1:],fitted_series[1:], label='Training Data (FItted)', marker='o', linestyle='dashed')
+
+# Plot original test data
+plt.plot(test['YEAR'], test['CO2 eq'], label='Test Data (Original Data)', marker='o', linestyle='solid')
+
+# Plot model's predicted values for the test set
+plt.plot(test_forecast_df['Year'], test_forecast_df['Forecast'], label='Test Data (Fitted)', marker='o', linestyle='dashed')
+
+
+
+
+# Labels and formatting
+plt.xlabel('Year')
+plt.ylabel('kton CO2 eq 10e4')
+plt.title('ARIMA(p,d,q)')
+plt.legend()
+plt.grid(True)
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# In[ ]:
+
+# Calculate and print the mean squared error for the test set only
+
+actual = test['CO2 eq']
+
+mse = mean_squared_error(actual, test_forecast_df['Forecast'])
+rmse = np.sqrt(mse)
+msle = mean_squared_log_error(actual, test_forecast_df['Forecast'])
+mae = mean_absolute_error(actual, test_forecast_df['Forecast'])
+mape = np.mean(np.abs((actual - test_forecast_df['Forecast']) / actual)) * 100
+med_ae = median_absolute_error(actual, test_forecast_df['Forecast'])
+max_err = max_error(actual, test_forecast_df['Forecast'])
+r2 = r2_score(actual, test_forecast_df['Forecast'])
+evs = explained_variance_score(actual, test_forecast_df['Forecast'])
+
+# Create a DataFrame for the errors
+error_metrics = pd.DataFrame({
+    'Metric': ['MSE', 'RMSE', 'MSLE', 'MAE', 'MAPE', 'MedianAE', 'Max error', 'R^2 score', 'EVS'],
+    'Value': [mse, rmse, msle, mae, mape, med_ae, max_err, r2, evs]
+})
+
+# Define the styles for the table headers
+styles = [
+    {'selector': 'th', 'props': [('background-color', 'grey'), ('color', 'white'), ('font-size', '12pt'), ('text-align', 'center'), ('font-family', 'Arial')]},
+    {'selector': 'td', 'props': [('background-color', 'white'), ('color', 'black'), ('font-size', '12pt'), ('text-align', 'center'), ('font-family', 'Arial')]},
+    {'selector': 'caption', 'props': [('caption-side', 'top'), ('text-align', 'center'), ('font-size', '14pt'), ('font-weight', 'bold'), ('font-family', 'Arial')]}
+]
+
+# Display the table using pandas styling for better formatting in Jupyter Notebook
+print("Statistics Before Preprocessing:")
+display(error_metrics.style.set_table_styles(
+    [{'selector': 'th', 'props': [('font-size', '12pt'), ('text-align', 'center')]},
+     {'selector': 'td', 'props': [('font-size', '10pt'), ('text-align', 'center')]}])
+    .set_caption("Statistics Before Preprocessing"))
