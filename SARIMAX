@@ -1,0 +1,219 @@
+# SARIMXA STARTS LOOKING FOR THE BEST VALUES OF P & Q AND EXOG COMBINATIONS
+
+# In[ ]:
+
+%%capture
+
+# DATAFORARIMA=SPAIN_scaled
+
+# DATAFORARIMA=FRANCE_scaled
+# DATAFORARIMA=ITALY_scaled
+DATAFORARIMA=GERMANY_scaled
+
+train_size = int(len(DATAFORARIMA) * 0.8)
+train, test = DATAFORARIMA.iloc[:train_size], DATAFORARIMA.iloc[train_size:]
+
+# List of all possible exogenous variables
+exog_vars = ['GDP', 'POPULATION', 'GELEC NR', 'GELEC R', 'TRANSP', 'METALI', 'CONST',]
+
+# Create empty list to store search results
+order_aic_bic = []
+
+# Loop over different combinations of exogenous variables
+for k in range(1, len(exog_vars) + 1):  # k = 1 to N (all possible subsets)
+    for exog_subset in itertools.combinations(exog_vars, k):
+        # Subset the exogenous variables for training and testing
+        Xtrain_subset = train[list(exog_subset)]
+        Xtest_subset = test[list(exog_subset)]
+
+        # Loop over p values from 0-2
+        for p in range(3):
+            # Loop over q values from 0-2
+            for q in range(3):
+                try:
+                    # Create and fit SARIMAX model
+                    model = SARIMAX(train['CO2 eq'], order=(p,1,q), 
+                                    seasonal_order=(0,0,0,0), 
+                                    exog=Xtrain_subset)
+                    results = model.fit(disp=False)
+
+                    # Append order, exog variables, AIC, and BIC
+                    order_aic_bic.append((p, q, exog_subset, results.aic, results.bic))
+
+                except Exception as e:
+                    print(f"Model failed for p={p}, q={q}, exog={exog_subset}: {e}")
+
+# Convert results to DataFrame for analysis
+results_df = pd.DataFrame(order_aic_bic, columns=['p', 'q', 'exog_vars', 'AIC', 'BIC'])
+
+# In[ ]:
+
+print(results_df.sort_values('AIC')[0:10])
+
+print('____________________________________________________')
+print(results_df.sort_values('BIC')[0:10])
+
+# In[ ]:
+
+#////////////////////////////////////////////////////////////////////////////
+#////////////////////////////////////////////////////////////////////////////
+#////////////////////////////////////////////////////////////////////////////
+#////////////////////////////////////////////////////////////////////////////
+
+Xtrain = pd.DataFrame({
+    # 'GDP': train['GDP'],
+    # 'POPULATION' : train['POPULATION'],
+
+    # 'GELEC R': train['GELEC R'],
+    'GELEC NR':train['GELEC NR'],
+
+    'TRANSP':train['TRANSP'],
+    #  'METALI': train['METALI'],
+  #  'CONST': train['CONST']
+})
+
+# Forecast the values for the test set
+
+Xtest = pd.DataFrame({
+    #  'GDP': test['GDP'],
+    # 'POPULATION' : test['POPULATION'],
+
+    # 'GELEC R': test['GELEC R'],
+    'GELEC NR':test['GELEC NR'],
+
+   'TRANSP':test['TRANSP'],
+    # 'METALI': test['METALI'],
+    # 'CONST': test['CONST']
+})
+
+#print(train)
+#////////////////////////////////////////////////////////////////////////////
+#////////////////////////////////////////////////////////////////////////////
+#////////////////////////////////////////////////////////////////////////////
+#////////////////////////////////////////////////////////////////////////////
+#////////////////////////////////////////////////////////////////////////////
+
+
+order=(0, 1, 0)
+# modelARIMA = SARIMAX(train['CO2 eq'], order=order,seasonal_order=(0,0,0,0),exog=Xtrain)
+# fitted_model = modelARIMA.fit()
+# fitted_model.plot_diagnostics()
+
+# # Print the model summary
+# print(fitted_model.summary())
+
+modelSARIMAX = SARIMAX(train['CO2 eq'], order=order,seasonal_order=(0,0,0,0),exog=Xtrain)
+fitted_model = modelSARIMAX.fit()
+fitted_model.plot_diagnostics()
+
+# Print the model summary
+print(fitted_model.summary())
+
+
+# In[ ]:
+
+# Forecast the values for the test set
+# Inicializar la lista para las predicciones del conjunto de prueba
+
+start = len(train)
+
+end =len(test)+len(train)-1
+
+test_forecast_df = []
+
+# Crear una copia del modelo ajustado
+fit_newobs = fitted_model
+
+fit_newobs = fit_newobs.append(test['CO2 eq'], refit=False,exog=Xtest)
+next_pred = fit_newobs.predict(start=start, end=end, typ='levels')
+
+# Convertir test_forecast a un array de numpy
+test_forecast_df = np.array(next_pred)
+print(test_forecast_df)
+forecast_years = list(test['YEAR']) + list(range(test['YEAR'].iloc[-1] + 1, test['YEAR'].iloc[-1] + 1))
+
+#/////////////////////////////////////////////////////////////////////////////////////////////
+#/////////////////////////////////////////////////////////////////////////////////////////////
+#/////////////////////////////////////////////////////////////////////////////////////////////
+MAX=MAXf/1e4
+MIN=MINf/1e4
+#/////////////////////////////////////////////////////////////////////////////////////////////
+#/////////////////////////////////////////////////////////////////////////////////////////////
+#/////////////////////////////////////////////////////////////////////////////////////////////
+
+train['CO2 eq'] = train['CO2 eq'] * (MAX - MIN) + MIN
+test['CO2 eq'] = test['CO2 eq'] * (MAX - MIN) + MIN
+test_forecast_df = test_forecast_df * (MAX - MIN) + MIN
+
+
+
+
+
+# Plot the original train & test data along with the model's fitted values
+plt.figure(figsize=(10, 5))
+
+# Plot original training data
+plt.plot(train['YEAR'].iloc[1:], train['CO2 eq'].iloc[1:], label='Training Data (Original Data)', marker='o', linestyle='solid')
+
+
+fitted_values = fitted_model.fittedvalues
+fitted_series = pd.Series(fitted_values, index=pd.Index(range(len(fitted_values))))
+fitted_series = fitted_series * (MAX - MIN) + MIN
+# print(fitted_series)
+
+plt.plot(train['YEAR'].iloc[1:],fitted_series[1:], label='Training Data (FItted)', marker='o', linestyle='dashed')
+
+# Plot original test data
+plt.plot(test['YEAR'], test['CO2 eq'], label='Test Data (Original Data)', marker='o', linestyle='solid')
+
+# Plot model's predicted values for the test set
+plt.plot(test['YEAR'], test_forecast_df, label='Test Data (Fitted)', marker='o', linestyle='dashed')
+
+
+
+
+# Labels and formatting
+plt.xlabel('Year')
+plt.ylabel('kton CO2 eq 10e4')
+plt.title('ARIMA(p,d,q)')
+plt.legend()
+plt.grid(True)
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# In[ ]:
+
+# Calculate and print the mean squared error for the test set only
+
+actual = test['CO2 eq']
+
+mse = mean_squared_error(actual, test_forecast_df)
+rmse = np.sqrt(mse)
+msle = mean_squared_log_error(actual, test_forecast_df)
+mae = mean_absolute_error(actual, test_forecast_df)
+mape = np.mean(np.abs((actual - test_forecast_df) / actual)) * 100
+med_ae = median_absolute_error(actual, test_forecast_df)
+max_err = max_error(actual, test_forecast_df)
+r2 = r2_score(actual, test_forecast_df)
+evs = explained_variance_score(actual, test_forecast_df)
+
+# Create a DataFrame for the errors
+error_metrics = pd.DataFrame({
+    'Metric': ['MSE', 'RMSE', 'MSLE', 'MAE', 'MAPE', 'MedianAE', 'Max error', 'R^2 score', 'EVS'],
+    'Value': [mse, rmse, msle, mae, mape, med_ae, max_err, r2, evs]
+})
+
+# Define the styles for the table headers
+styles = [
+    {'selector': 'th', 'props': [('background-color', 'grey'), ('color', 'white'), ('font-size', '12pt'), ('text-align', 'center'), ('font-family', 'Arial')]},
+    {'selector': 'td', 'props': [('background-color', 'white'), ('color', 'black'), ('font-size', '12pt'), ('text-align', 'center'), ('font-family', 'Arial')]},
+    {'selector': 'caption', 'props': [('caption-side', 'top'), ('text-align', 'center'), ('font-size', '14pt'), ('font-weight', 'bold'), ('font-family', 'Arial')]}
+]
+
+# Display the table using pandas styling for better formatting in Jupyter Notebook
+print("Statistics Before Preprocessing:")
+display(error_metrics.style.set_table_styles(
+    [{'selector': 'th', 'props': [('font-size', '12pt'), ('text-align', 'center')]},
+     {'selector': 'td', 'props': [('font-size', '10pt'), ('text-align', 'center')]}])
+    .set_caption("Statistics Before Preprocessing"))
