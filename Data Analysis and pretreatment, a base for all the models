@@ -1,0 +1,553 @@
+# In[ ]:
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+import itertools
+from statsmodels.tsa.stattools import adfuller
+import seaborn as sns
+from sklearn.preprocessing import MinMaxScaler
+import scipy.stats as stats
+import statsmodels.api as sm
+
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+from IPython.display import display
+from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_squared_log_error, median_absolute_error, max_error, r2_score, explained_variance_score
+
+# In[ ]:
+
+# Ruta al archivo CSV
+file_path =r'C:\Users\inigo\Desktop\TFG\Datos\DATASETS\Spain.csv'
+
+# Intenta con latin-1
+try:
+    df1 = pd.read_csv(file_path, delimiter=';', encoding='latin-1')
+except UnicodeDecodeError:
+    # Si latin-1 falla, intenta con ISO-8859-1
+    df1 = pd.read_csv(file_path, delimiter=';', encoding='ISO-8859-1')
+
+df1=df1[:33]
+
+df1=df1.drop(columns='GELEC TOTAL')
+
+df1['Spain KT CO2eq'] = df1['Spain KT CO2eq'].str.replace(',', '.').astype(float)  # Convertir a float
+df1['GELEC R'] = df1['GELEC R'].str.replace(',', '.').astype(float)
+df1['GDP']=df1['GDP'].str.replace(',', '.').astype(float)
+df1['GELEC NR'] = df1['GELEC NR'].str.replace(',', '.').astype(float)
+df1['TRANSP'] = df1['TRANSP'].str.replace(',', '.').astype(float)
+df1['METALI'] = df1['METALI'].str.replace(',', '.').astype(float)
+df1['CONST'] = df1['CONST'].str.replace(',', '.').astype(float)
+df1['YEAR'] = df1['YEAR'].astype(int)
+
+SPAIN = df1
+
+print(SPAIN)
+
+# In[ ]:
+
+file_path =r'C:\Users\inigo\Desktop\TFG\Datos\DATASETS\France.csv'
+
+# Intenta con latin-1
+try:
+    df2 = pd.read_csv(file_path, delimiter=';', encoding='latin-1')
+except UnicodeDecodeError:
+    # Si latin-1 falla, intenta con ISO-8859-1
+    df2 = pd.read_csv(file_path, delimiter=';', encoding='ISO-8859-1')
+
+df2=df2[:33]
+
+df2=df2.drop(columns='GELEC TOTAL')
+
+df2['Spain KT CO2eq'] = df2['Spain KT CO2eq'].str.replace(',', '.').astype(float)  # Convertir a float
+df2['GELEC R'] = df2['GELEC R'].str.replace(',', '.').astype(float)
+df2['GDP'] = df2['GDP'].str.replace(',', '.').astype(float)
+df2['GELEC NR'] = df2['GELEC NR'].str.replace(',', '.').astype(float)
+df2['TRANSP'] = df2['TRANSP'].str.replace(',', '.').astype(float)
+df2['METALI'] = df2['METALI'].str.replace(',', '.').astype(float)
+df2['CONST'] = df2['CONST'].str.replace(',', '.').astype(float)
+df2['YEAR'] = df2['YEAR'].astype(int)
+
+FRANCE = df2
+
+print(FRANCE)
+
+# In[ ]:
+
+file_path =r'C:\Users\inigo\Desktop\TFG\Datos\DATASETS\Germany.csv'
+
+# Intenta con latin-1
+try:
+    df3 = pd.read_csv(file_path, delimiter=';', encoding='latin-1')
+except UnicodeDecodeError:
+    # Si latin-1 falla, intenta con ISO-8859-1
+    df3 = pd.read_csv(file_path, delimiter=';', encoding='ISO-8859-1')
+
+df3 = df3[:33]
+
+df3 = df3.drop(columns='GELEC TOTAL')
+
+df3['Spain KT CO2eq'] = df3['Spain KT CO2eq'].str.replace(',', '.').astype(float)  # Convertir a float
+df3['GELEC R'] = df3['GELEC R'].str.replace(',', '.').astype(float)
+df3['GDP'] = df3['GDP'].str.replace(',', '.').astype(float)
+df3['GELEC NR'] = df3['GELEC NR'].str.replace(',', '.').astype(float)
+df3['TRANSP'] = df3['TRANSP'].str.replace(',', '.').astype(float)
+df3['METALI'] = df3['METALI'].str.replace(',', '.').astype(float)
+df3['CONST'] = df3['CONST'].str.replace(',', '.').astype(float)
+df3['YEAR'] = df3['YEAR'].astype(int)
+
+GERMANY = df3
+
+print(GERMANY)
+
+# In[ ]:
+
+file_path =r'C:\Users\inigo\Desktop\TFG\Datos\DATASETS\Italy.csv'
+
+# Intenta con latin-1
+try:
+    df4 = pd.read_csv(file_path, delimiter=';', encoding='latin-1')
+except UnicodeDecodeError:
+    # Si latin-1 falla, intenta con ISO-8859-1
+    df4 = pd.read_csv(file_path, delimiter=';', encoding='ISO-8859-1')
+
+df4 = df4[:33]
+
+df4 = df4.drop(columns='GELEC TOTAL')
+
+df4['Spain KT CO2eq'] = df4['Spain KT CO2eq'].str.replace(',', '.').astype(float)  # Convertir a float
+df4['GELEC R'] = df4['GELEC R'].str.replace(',', '.').astype(float)
+df4['GDP'] = df4['GDP'].str.replace(',', '.').astype(float)
+df4['GELEC NR'] = df4['GELEC NR'].str.replace(',', '.').astype(float)
+df4['TRANSP'] = df4['TRANSP'].str.replace(',', '.').astype(float)
+df4['METALI'] = df4['METALI'].str.replace(',', '.').astype(float)
+df4['CONST'] = df4['CONST'].str.replace(',', '.').astype(float)
+df4['YEAR'] = df4['YEAR'].astype(int)
+
+ITALY = df4
+
+print(ITALY)
+
+# In[ ]:
+
+# Visualización de los datos
+plt.figure(figsize=(10, 6))
+plt.plot(SPAIN['YEAR'], SPAIN['Spain KT CO2eq'], marker='o', linestyle='-', alpha=1,label='SPAIN')
+plt.plot(FRANCE['YEAR'], FRANCE['Spain KT CO2eq'], marker='o', linestyle='-', alpha=1,label='FRANCE')
+plt.plot(GERMANY['YEAR'], GERMANY['Spain KT CO2eq'], marker='o', linestyle='-', alpha=1,label='GERMANY')
+plt.plot(ITALY['YEAR'], ITALY['Spain KT CO2eq'], marker='o', linestyle='-', alpha=1,label='ITALY')
+# plt.plot(EUROPE['YEAR'], EUROPE['Spain KT CO2eq'], marker='o', linestyle='-', alpha=1,label='EUROPE')
+
+
+
+
+plt.xlabel('Time [Years]')
+plt.ylabel('CO2eq [kton]')
+plt.title('CO2eq emisions from 1990 to 2022')
+plt.grid(True)
+plt.xticks(rotation=45)
+plt.ylim(100000, 1500000)
+
+plt.legend(loc='best') 
+plt.tight_layout()
+plt.show()
+
+# In[ ]:
+
+plt.figure(figsize=(8, 10))
+plt.plot(SPAIN['YEAR'], SPAIN['POPULATION'], marker='o', linestyle='-', alpha=1, label='SPAIN')
+plt.plot(FRANCE['YEAR'], FRANCE['POPULATION'], marker='o', linestyle='-', alpha=1, label='FRANCE')
+plt.plot(GERMANY['YEAR'], GERMANY['POPULATION'], marker='o', linestyle='-', alpha=1, label='GERMANY')
+plt.plot(ITALY['YEAR'], ITALY['POPULATION'], marker='o', linestyle='-', alpha=1, label='ITALY')
+# plt.plot(EUROPE['YEAR'], EUROPE['POPULATION'], marker='o', linestyle='-', alpha=1, label='EUROPE')
+
+plt.xlabel('TIME [YEARS]')
+plt.ylabel('POPULATION')
+plt.title('POPULATION TRENDS FROM 1990 TO 2022')
+plt.grid(True)
+plt.xticks(rotation=45)
+plt.legend(loc="lower center", bbox_to_anchor=(0.5, -0.3), ncol=4) 
+plt.tight_layout()
+plt.show()
+
+# In[ ]:
+
+plt.figure(figsize=(8, 5))
+plt.plot(SPAIN['YEAR'], SPAIN['GDP'], marker='o', linestyle='-', alpha=1, label='SPAIN')
+plt.plot(FRANCE['YEAR'], FRANCE['GDP'], marker='o', linestyle='-', alpha=1, label='FRANCE')
+plt.plot(GERMANY['YEAR'], GERMANY['GDP'], marker='o', linestyle='-', alpha=1, label='GERMANY')
+plt.plot(ITALY['YEAR'], ITALY['GDP'], marker='o', linestyle='-', alpha=1, label='ITALY')
+
+plt.xlabel('TIME [YEARS]')
+plt.ylabel('GDP [Millions of €]')
+plt.title('GDP')
+plt.grid(True)
+plt.xticks(rotation=45)
+plt.legend(loc='best') 
+plt.tight_layout()
+plt.show()
+
+# In[ ]:
+
+plt.figure(figsize=(8, 5))
+plt.plot(SPAIN['YEAR'], SPAIN['GELEC R'], marker='o', linestyle='-', alpha=1, label='SPAIN')
+plt.plot(FRANCE['YEAR'], FRANCE['GELEC R'], marker='o', linestyle='-', alpha=1, label='FRANCE')
+plt.plot(GERMANY['YEAR'], GERMANY['GELEC R'], marker='o', linestyle='-', alpha=1, label='GERMANY')
+plt.plot(ITALY['YEAR'], ITALY['GELEC R'], marker='o', linestyle='-', alpha=1, label='ITALY')
+# plt.plot(EUROPE['YEAR'],EUROPE['GELEC R'], marker='o', linestyle='-', alpha=1, label='EUROPE')
+
+plt.xlabel('TIME [YEARS]')
+plt.ylabel('GELECR [KT of oil eq]')
+plt.title('RENEWABLE ENERGY SUPPLY ')
+plt.grid(True)
+plt.xticks(rotation=45)
+plt.legend(loc='best') 
+plt.tight_layout()
+plt.show()
+
+# In[ ]:
+
+plt.figure(figsize=(8, 5))
+plt.plot(SPAIN['YEAR'], SPAIN['GELEC NR'], marker='x', linestyle='-', alpha=1, label='SPAIN')
+plt.plot(FRANCE['YEAR'], FRANCE['GELEC NR'], marker='x', linestyle='-', alpha=1, label='FRANCE')
+plt.plot(GERMANY['YEAR'], GERMANY['GELEC NR'], marker='x', linestyle='-', alpha=1, label='GERMANY')
+plt.plot(ITALY['YEAR'], ITALY['GELEC NR'], marker='x', linestyle='-', alpha=1, label='ITALY')
+# plt.plot(EUROPE['YEAR'], EUROPE['GELEC NR'], marker='o', linestyle='-', alpha=1, label='EUROPE')
+
+plt.xlabel('TIME [YEARS]')
+plt.ylabel('GELEC NR [KT of oil eq]')
+plt.title('NON-RENEWABLE ENERGY SUPPLY')
+plt.grid(True)
+plt.xticks(rotation=45)
+plt.legend(loc='best') 
+plt.tight_layout()
+plt.show()
+
+# In[ ]:
+
+plt.figure(figsize=(5, 5))
+plt.plot(SPAIN['YEAR'], SPAIN['TRANSP'], marker='x', linestyle='-', alpha=1, label='SPAIN')
+plt.plot(FRANCE['YEAR'], FRANCE['TRANSP'], marker='x', linestyle='-', alpha=1, label='FRANCE')
+plt.plot(GERMANY['YEAR'], GERMANY['TRANSP'], marker='x', linestyle='-', alpha=1, label='GERMANY')
+plt.plot(ITALY['YEAR'], ITALY['TRANSP'], marker='x', linestyle='-', alpha=1, label='ITALY')
+# plt.plot(EUROPE['YEAR'], EUROPE['TRANSP'], marker='o', linestyle='-', alpha=1, label='EUROPE')
+
+plt.xlabel('TIME [YEARS]')
+plt.ylabel('TRANSP [KT of oil eq]')
+plt.title('TRANSPORTATION ENERGY CONSUMPTION')
+plt.grid(True)
+plt.xticks(rotation=45)
+plt.legend(loc='best') 
+plt.tight_layout()
+plt.show()
+
+# In[ ]:
+
+plt.figure(figsize=(5, 5))
+plt.plot(SPAIN['YEAR'], SPAIN['METALI'], marker='x', linestyle='-', alpha=1, label='SPAIN')
+plt.plot(FRANCE['YEAR'], FRANCE['METALI'], marker='x', linestyle='-', alpha=1, label='FRANCE')
+plt.plot(GERMANY['YEAR'], GERMANY['METALI'], marker='x', linestyle='-', alpha=1, label='GERMANY')
+plt.plot(ITALY['YEAR'], ITALY['METALI'], marker='x', linestyle='-', alpha=1, label='ITALY')
+# plt.plot(EUROPE['YEAR'], EUROPE['METALI'], marker='o', linestyle='-', alpha=1, label='EUROPE')
+
+plt.xlabel('TIME [YEARS]')
+plt.ylabel('METALI [KT of oil eq]')
+plt.title('IRON & STEEL ENERGY CONSUMPTION')
+plt.grid(True)
+plt.xticks(rotation=45)
+plt.legend(loc='best') 
+plt.tight_layout()
+plt.show()
+
+# In[ ]:
+
+plt.figure(figsize=(5, 5))
+plt.plot(SPAIN['YEAR'], SPAIN['CONST'], marker='x', linestyle='-', alpha=1, label='SPAIN')
+plt.plot(FRANCE['YEAR'], FRANCE['CONST'], marker='x', linestyle='-', alpha=1, label='FRANCE')
+plt.plot(GERMANY['YEAR'], GERMANY['CONST'], marker='x', linestyle='-', alpha=1, label='GERMANY')
+plt.plot(ITALY['YEAR'], ITALY['CONST'], marker='x', linestyle='-', alpha=1, label='ITALY')
+# plt.plot(EUROPE['YEAR'], EUROPE['CONST'], marker='o', linestyle='-', alpha=1, label='EUROPE')
+
+plt.xlabel('TIME [YEARS]')
+plt.ylabel('CONSTRUCTION [KT of oil eq]')
+plt.title('CONSTRUCTION ENERGY CONSUMPTION')
+plt.grid(True)
+plt.xticks(rotation=45)
+plt.legend(loc='best') 
+plt.tight_layout()
+plt.show()
+
+# In[ ]:
+
+SPAIN.rename(columns={"Spain KT CO2eq": "CO2 eq"}, inplace=True)
+FRANCE.rename(columns={"Spain KT CO2eq": "CO2 eq"}, inplace=True)
+ITALY.rename(columns={"Spain KT CO2eq": "CO2 eq"}, inplace=True)
+GERMANY.rename(columns={"Spain KT CO2eq": "CO2 eq"}, inplace=True)
+
+# In[ ]:
+
+# Inicializar el escalador
+scaler = MinMaxScaler(feature_range=(0, 1))
+MAXs=SPAIN['CO2 eq'].max()
+MAXf=FRANCE['CO2 eq'].max()
+MAXi=ITALY['CO2 eq'].max()
+MAXg=GERMANY['CO2 eq'].max()
+
+MINs=SPAIN['CO2 eq'].min()
+MINf=FRANCE['CO2 eq'].min()
+MINi=ITALY['CO2 eq'].min()
+MINg=GERMANY['CO2 eq'].min()
+
+# Función para escalar un país manteniendo la columna YEAR
+def scale_country(df):
+    df_scaled = df.copy()
+    df_scaled.iloc[:, 1:] = scaler.fit_transform(df.iloc[:, 1:])  # Escalamos solo las columnas numéricas
+    return df_scaled
+
+# Escalar cada país
+SPAIN_scaled = scale_country(SPAIN)
+FRANCE_scaled = scale_country(FRANCE)
+ITALY_scaled = scale_country(ITALY)
+GERMANY_scaled = scale_country(GERMANY)
+
+# SPAIN_scaled = SPAIN / 10000;
+# FRANCE_scaled = FRANCE / 10000;
+# ITALY_scaled = ITALY / 10000;
+# GERMANY_scaled = GERMANY / 10000;
+
+
+
+# Imprimir cada matriz escalada
+print("Matriz SPAIN escalada entre 0 y 1:")
+print(SPAIN_scaled)
+print("\n" + "="*50 + "\n")
+
+print("Matriz FRANCE escalada entre 0 y 1:")
+print(FRANCE_scaled)
+print("\n" + "="*50 + "\n")
+
+print("Matriz ITALY escalada entre 0 y 1:")
+print(ITALY_scaled)
+print("\n" + "="*50 + "\n")
+
+print("Matriz GERMANY escalada entre 0 y 1:")
+print(GERMANY_scaled)
+print("\n" + "="*50 + "\n")
+
+# In[ ]:
+
+# Configurar una figura con subgráficos en formato 2x2 con ejes compartidos
+fig, axes = plt.subplots(2, 2, figsize=(14, 10), sharex=True, sharey=True)
+
+
+#Diccionario de países y sus respectivos DataFrames escalados
+countries = {
+    "SPAIN": SPAIN_scaled,
+    "FRANCE": FRANCE_scaled,
+    "ITALY": ITALY_scaled,
+    "GERMANY": GERMANY_scaled
+}
+
+# countries = {
+#     "SPAIN": SPAIN,
+#     "FRANCE": FRANCE,
+#     "ITALY": ITALY,
+#     "GERMANY": GERMANY
+# }
+
+
+# Lista de ejes para asignar a cada gráfico
+axes_list = [axes[0, 0], axes[0, 1], axes[1, 0], axes[1, 1]]
+
+# Lista para almacenar las líneas y etiquetas para la leyenda combinada
+lines = []
+labels = []
+
+# Iterar sobre los países y los ejes correspondientes
+for (country, df), ax in zip(countries.items(), axes_list):
+    for col in df.columns[1:]:  # Excluir la columna YEAR
+        if "CO2" in col:  # Si es CO2, hacer la línea más gruesa y en rojo
+            line, = ax.plot(df["YEAR"], df[col], linewidth=3, label=col, color="red")
+        else:
+            line, = ax.plot(df["YEAR"], df[col], linewidth=1, label=col)
+        
+        # Agregar línea y etiqueta solo si no está ya en la lista
+        if col not in labels:
+            lines.append(line)
+            labels.append(col)
+
+    ax.set_title(f"{country}")  # Solo el nombre del país
+    ax.grid(True)
+
+# Agregar nombre del eje X solo en los ejes inferiores
+for ax in axes[1, :]:
+    ax.set_xlabel("YEAR")
+
+# Agregar nombre del eje Y solo en la primera columna de gráficos
+for ax in axes[:, 0]:
+    ax.set_ylabel("Normalized Data 0-1")
+
+# Agregar leyenda combinada en la parte inferior
+fig.legend(lines, labels, loc="lower center", ncol=4, fontsize="medium", frameon=True)
+
+# Ajustar el diseño para evitar superposición
+plt.tight_layout(rect=[0, 0.05, 1, 1])  # Dejar espacio para la leyenda
+plt.show()
+
+# In[ ]:
+
+# Configurar una figura con subgráficos en formato 2x2
+fig, axes = plt.subplots(2, 2, figsize=(14, 12))
+
+# Lista de ejes para asignar a cada heatmap
+axes_list = [axes[0, 0], axes[0, 1], axes[1, 0], axes[1, 1]]
+
+# Iterar sobre los países y los ejes correspondientes
+for (country, df), ax in zip(countries.items(), axes_list):
+    # Calcular la matriz de correlación (excluyendo YEAR)
+    correlation_matrix = df.iloc[:, 1:].corr()
+    
+    # Crear el heatmap
+ 
+    sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm", fmt=".2f", linewidths=0.5, ax=ax)
+    
+    ax.set_title(f"{country}")
+
+# Ajustar el diseño
+plt.tight_layout()
+plt.show()
+
+print(correlation_matrix)
+
+# In[ ]:
+
+# Dictionary to store results
+stats_results = {}
+
+# Compute statistics for each country
+for country, df in countries.items():
+    stats_df = pd.DataFrame()
+    
+    for col in df.columns[1:]:  # Exclude "YEAR" column
+        stats_df[col] = [
+            df[col].count(),              # Count
+            df[col].mean(),               # Mean
+            df[col].std(),                # Standard Deviation
+            df[col].min(),                # Minimum
+            stats.kurtosis(df[col]),      # Kurtosis
+            stats.skew(df[col]),          # Skewness
+            df[col].median(),             # Median
+            df[col].max()                 # Maximum
+        ]
+    
+    # Assign row labels
+    stats_df.index = [
+        "Count", "Mean", "Standard Deviation", "Minimum", 
+        "Kurtosis", "Skewness", "Median", "Maximum"
+    ]
+    
+    stats_results[country] = stats_df
+
+# Display results for each country
+for country, df in stats_results.items():
+    print(f"\nStatistics for {country}:")
+    display(df)
+
+
+# In[ ]:
+
+# Function to differentiate each country's data while keeping the YEAR column
+def diff1(df):
+    diff_df = df.copy()
+    diff_df.iloc[:, 1] = df.iloc[:, 1].diff()  # Differentiate numerical columns
+    return diff_df.dropna().iloc[:, [0, 1]].reset_index(drop=True)  # Drop NaN from first row
+
+# Differentiate each country
+SPAINCO2_diff = diff1(SPAIN_scaled)
+FRANCECO2_diff = diff1(FRANCE_scaled)
+ITALYCO2_diff = diff1(ITALY_scaled)
+GERMANYCO2_diff = diff1(GERMANY_scaled)
+
+
+
+# In[ ]:
+
+# Differentiate each country
+SPAINCO2_diff2 = diff1(SPAINCO2_diff)
+FRANCECO2_diff2 = diff1(FRANCECO2_diff)
+ITALYCO2_diff2 = diff1(ITALYCO2_diff)
+GERMANYCO2_diff2 = diff1(GERMANYCO2_diff)
+
+# In[ ]:
+
+def perform_adf_test(series):
+    """
+    Null hypothesis is that the time series has a unit root and is non-stationary
+    To reject H0 ADF statistic should be less than the critical value or If the p-value is less than 0.05.
+
+    Prints:
+    ADF statistic, p-value, and critical values.
+    """
+    result = adfuller(series)
+    print('ADF Statistic: %f' % result[0])
+    print('p-value: %f' % result[1])
+    print('Critical Values:')
+    for key, value in result[4].items():
+        print('\t%s: %.3f' % (key, value))
+
+print('ADF test without diferentiation')
+print('SPAIN')
+perform_adf_test(SPAIN_scaled['CO2 eq'])
+
+print('FRANCE')
+perform_adf_test(FRANCE_scaled['CO2 eq'])
+
+print('ITALY')
+perform_adf_test(ITALY_scaled['CO2 eq'])
+
+print('GERMANY')
+perform_adf_test(GERMANY_scaled['CO2 eq'])
+
+print('_______________________________________________')
+print('ADF test 1st order diferentiation')
+print('SPAIN')
+perform_adf_test(SPAINCO2_diff.iloc[:,1])
+
+print('FRANCE')
+perform_adf_test(FRANCECO2_diff.iloc[:,1])
+
+print('ITALY')
+perform_adf_test(ITALYCO2_diff.iloc[:,1])
+
+print('GERMANY')
+perform_adf_test(GERMANYCO2_diff.iloc[:,1])
+
+
+# In[ ]:
+
+# Function to plot ACF and PACF
+def APACF(series, country):
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Set the main title with country name
+    fig.suptitle(f'{country}', fontsize=14, fontweight='bold')
+
+    # ACF plot
+    sm.graphics.tsa.plot_acf(series, lags=10, ax=axes[0])
+    axes[0].set_title('Autocorrelation Function (ACF)')
+
+    # PACF plot
+    sm.graphics.tsa.plot_pacf(series, lags=10, method='ywm', ax=axes[1])  # Use 'ywm' method for PACF
+    axes[1].set_title('Partial Autocorrelation Function (PACF)')
+
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])  # Adjust layout to fit the title
+    plt.show()
+
+# Call the function for each country
+APACF(SPAINCO2_diff['CO2 eq'], 'SPAIN')
+APACF(FRANCECO2_diff['CO2 eq'], 'FRANCE')
+APACF(ITALYCO2_diff['CO2 eq'], 'ITALY')
+APACF(GERMANYCO2_diff['CO2 eq'], 'GERMANY')
